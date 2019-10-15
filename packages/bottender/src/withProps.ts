@@ -1,11 +1,14 @@
 import Context from './context/Context';
-import { Action, Props } from './types';
+import { Action, Client, Event, Props } from './types';
 
-function withProps(action: Action, props: Props): Action {
+function withProps<C extends Client = any, E extends Event = any>(
+  action: Action<C, E>,
+  props: Props<C, E>
+): Action<C, E> {
   // TODO: we may only apply this on dev env
   Object.freeze(props);
 
-  const actionWithProps = (context: Context): Action => {
+  const actionWithProps = (context: Context<C, E>): Action<C, E> => {
     return action.bind(null, context, props);
   };
 

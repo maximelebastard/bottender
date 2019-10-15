@@ -1,19 +1,28 @@
 import Context from '../context/Context';
-import { Action, Props } from '../types';
+import { Action, Client, Event, Props } from '../types';
 
 type MatchPattern = string | Array<string> | RegExp;
 
-type RoutePattern = '*' | RoutePredicate;
+type RoutePattern<C extends Client, E extends Event> =
+  | '*'
+  | RoutePredicate<C, E>;
 
-type RoutePredicate = (context: Context) => boolean | Promise<boolean>;
+type RoutePredicate<C extends Client, E extends Event> = (
+  context: Context<C, E>
+) => boolean | Promise<boolean>;
 
-type Route = {
-  predicate: RoutePredicate;
-  action: Action;
+type Route<C extends Client, E extends Event> = {
+  predicate: RoutePredicate<C, E>;
+  action: Action<C, E>;
 };
 
-function router(routes: Route[]) {
-  return async function Router(context: Context, { next }: Props = {}) {
+function router<C extends Client = any, E extends Event = any>(
+  routes: Route<C, E>[]
+) {
+  return async function Router(
+    context: Context<C, E>,
+    { next }: Props<C, E> = {}
+  ) {
     for (const r of routes) {
       // eslint-disable-next-line no-await-in-loop
       if (await r.predicate(context)) {
@@ -25,7 +34,10 @@ function router(routes: Route[]) {
   };
 }
 
-function route(pattern: RoutePattern, action: Action) {
+function route<C extends Client = any, E extends Event = any>(
+  pattern: RoutePattern<C, E>,
+  action: Action<C, E>
+) {
   if (pattern === '*') {
     return {
       predicate: () => true,
@@ -39,31 +51,35 @@ function route(pattern: RoutePattern, action: Action) {
   };
 }
 
-function text(pattern: MatchPattern, action: Action) {
+function text<C extends Client = any, E extends Event = any>(
+  pattern: MatchPattern,
+  action: Action<C, E>
+) {
   if (typeof pattern === 'string') {
     if (pattern === '*') {
       return {
-        predicate: (context: Context) => context.event.isText,
+        predicate: (context: Context<C, E>) => context.event.isText,
         action,
       };
     }
 
     return {
-      predicate: (context: Context) => context.event.text === pattern,
+      predicate: (context: Context<C, E>) => context.event.text === pattern,
       action,
     };
   }
 
   if (pattern instanceof RegExp) {
     return {
-      predicate: (context: Context) => pattern.test(context.event.text),
+      predicate: (context: Context<C, E>) => pattern.test(context.event.text),
       action,
     };
   }
 
   if (Array.isArray(pattern)) {
     return {
-      predicate: (context: Context) => pattern.includes(context.event.text),
+      predicate: (context: Context<C, E>) =>
+        pattern.includes(context.event.text),
       action,
     };
   }
@@ -74,31 +90,36 @@ function text(pattern: MatchPattern, action: Action) {
   };
 }
 
-function payload(pattern: MatchPattern, action: Action) {
+function payload<C extends Client = any, E extends Event = any>(
+  pattern: MatchPattern,
+  action: Action<C, E>
+) {
   if (typeof pattern === 'string') {
     if (pattern === '*') {
       return {
-        predicate: (context: Context) => context.event.isPayload,
+        predicate: (context: Context<C, E>) => context.event.isPayload,
         action,
       };
     }
 
     return {
-      predicate: (context: Context) => context.event.payload === pattern,
+      predicate: (context: Context<C, E>) => context.event.payload === pattern,
       action,
     };
   }
 
   if (pattern instanceof RegExp) {
     return {
-      predicate: (context: Context) => pattern.test(context.event.payload),
+      predicate: (context: Context<C, E>) =>
+        pattern.test(context.event.payload),
       action,
     };
   }
 
   if (Array.isArray(pattern)) {
     return {
-      predicate: (context: Context) => pattern.includes(context.event.payload),
+      predicate: (context: Context<C, E>) =>
+        pattern.includes(context.event.payload),
       action,
     };
   }
